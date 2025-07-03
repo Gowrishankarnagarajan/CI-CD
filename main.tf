@@ -52,8 +52,20 @@ resource "azurerm_linux_web_app" "as2" {
   service_plan_id     = azurerm_service_plan.asp.id
   depends_on          = [azurerm_service_plan.asp]
   site_config {
+
     always_on = false
   }
 }
 
+resource "azurerm_storage_account" "example" {
+  name                     = "storageaccountname"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"
 
+  tags = {
+    environment = "Devops"
+  }
+}
+  

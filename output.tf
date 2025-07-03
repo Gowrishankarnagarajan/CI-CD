@@ -9,7 +9,7 @@ output "as2_url" {
 # Output the resource group name
 output "resource_group_name" {
   value = azurerm_resource_group.rg.name
-} 
+}
 # Output the service plan ID
 output "service_plan_id" {
   value = azurerm_service_plan.asp.id

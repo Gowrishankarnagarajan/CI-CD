@@ -1,11 +1,6 @@
-terraform { 
-  cloud { 
-    organization = "gs-devops" 
-
-    workspaces { 
-      name = "Devops" 
-    } 
-  } 
+variable "prefix" {
+  description = "Prefix for resource names"
+  default     = "myproject"
 }
 
 resource "azurerm_resource_group" "rg" {
@@ -13,63 +8,128 @@ resource "azurerm_resource_group" "rg" {
   location = "UK South"
 }
 
+data "azurerm_client_config" "current" {}
+
+resource "random_id" "kv" {
+  byte_length = 4
+}
+
+resource "azurerm_storage_account" "sa" {
+  name                     = "${var.prefix}storage${random_id.kv.hex}"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"
+
+  tags = {
+    environment = "Devops"
+  }
+}
+
+resource "azurerm_storage_container" "webapp1_sa" {
+  name                  = "${var.prefix}webapp1"
+  storage_account_id    = azurerm_storage_account.sa.id
+  container_access_type = "blob"
+}
+
+resource "azurerm_storage_container" "webapp2_sa" {
+  name                  = "${var.prefix}webapp2"
+  storage_account_id    = azurerm_storage_account.sa.id
+  container_access_type = "blob"
+}
+
+resource "azurerm_key_vault" "keyvault" {
+  name                        = "${var.prefix}-keyvault-${random_id.kv.hex}"
+  location                    = azurerm_resource_group.rg.location
+  resource_group_name         = azurerm_resource_group.rg.name
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  sku_name                    = "standard"
+  purge_protection_enabled    = true
+}
+
 resource "azurerm_service_plan" "asp" {
   name                = "${var.prefix}-asp"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   os_type             = "Linux"
-  sku_name            = "F1"
-  depends_on          = [azurerm_resource_group.rg]
+  sku_name            = "B1"
 }
 
-# Frontend App Service
-resource "azurerm_linux_web_app" "frontend" {
-  name                = "${var.prefix}-frontend"
+resource "azurerm_linux_web_app" "as1" {
+  name                = "${var.prefix}-webapp1"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.asp.id
-  depends_on          = [azurerm_service_plan.asp]
 
-  site_config {
-    always_on = false
-    linux_fx_version = "NODE|18-lts"  # Adjust based on frontend framework
-    app_command_line = "pm2 serve /home/site/wwwroot --no-daemon"
+  identity {
+    type = "SystemAssigned"
   }
-}
-
-# Backend App Service
-resource "azurerm_linux_web_app" "backend" {
-  name                = "${var.prefix}-backend"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  service_plan_id     = azurerm_service_plan.asp.id
-  depends_on          = [azurerm_service_plan.asp]
 
   site_config {
     always_on = false
-    linux_fx_version = "NODE|18-lts"  # Modify if using Python, .NET, etc.
   }
 
   app_settings = {
-    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "true"
-    "API_BASE_URL" = "https://${var.prefix}-frontend.azurewebsites.net"
+    "STORAGE_URI" = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp1_sa.name}/"
   }
 }
 
-# Source Control for Frontend (GitHub Deployment)
-resource "azurerm_app_service_source_control" "frontend_scm" {
-  app_id   = azurerm_linux_web_app.frontend.id
-  branch   = "main"
-  repo_url = "https://github.com/Gowrishankarnagarajan/frontend-repo"
+resource "azurerm_linux_web_app" "as2" {
+  name                = "${var.prefix}-webapp2"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  service_plan_id     = azurerm_service_plan.asp.id
 
-  depends_on = [azurerm_linux_web_app.frontend]
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    always_on = false
+  }
+
+  app_settings = {
+    "STORAGE_URI" = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp2_sa.name}/"
+  }
 }
 
-# Source Control for Backend (GitHub Deployment)
-resource "azurerm_app_service_source_control" "backend_scm" {
-  app_id   = azurerm_linux_web_app.backend.id
-  branch   = "main"
-  repo_url = "https://github.com/Gowrishankarnagarajan/backend-repo"
+resource "azurerm_role_assignment" "webapp1_storage_access" {
+  principal_id         = azurerm_linux_web_app.as1.identity.principal_id
+  role_definition_name = "Storage Blob Data Reader"
+  scope                = azurerm_storage_account.sa.id
+}
 
-  depends_on = [azurerm_linux_web_app.backend]
+resource "azurerm_role_assignment" "webapp2_storage_access" {
+  principal_id         = azurerm_linux_web_app.as2.identity.principal_id
+  role_definition_name = "Storage Blob Data Reader"
+  scope                = azurerm_storage_account.sa.id
+}
+
+resource "azurerm_network_security_group" "nsg" {
+  name                = "${var.prefix}-nsg"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "${var.prefix}-vnet"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = ["10.0.0.0/16"]
+
+  subnet {
+    name             = "subnet1"
+    address_prefixes = ["10.0.1.0/24"]
+    security_group   = azurerm_network_security_group.nsg.id
+  }
+
+  subnet {
+    name             = "subnet2"
+    address_prefixes = ["10.0.2.0/24"]
+    security_group   = azurerm_network_security_group.nsg.id
+  }
+
+  tags = {
+    environment = "Devops"
+  }
 }

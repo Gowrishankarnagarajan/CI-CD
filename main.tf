@@ -24,13 +24,13 @@ resource "azurerm_storage_account" "sa" {
   }
 }
 resource "azurerm_storage_container" "webapp1-sa" {
-  name                  = "${var.prefix}webapp1"# This is the name of the container for webapp1
-  storage_account_id = azurerm_storage_account.sa.id
+  name                  = "${var.prefix}webapp1" # This is the name of the container for webapp1
+  storage_account_id    = azurerm_storage_account.sa.id
   container_access_type = "blob" # or "blob", "container" for public access
 }
 resource "azurerm_storage_container" "webapp2-sa" {
   name                  = "${var.prefix}webapp2"
-  storage_account_id = azurerm_storage_account.sa.id
+  storage_account_id    = azurerm_storage_account.sa.id
   container_access_type = "blob" # or "blob", "container" for public access
 }
 
@@ -78,15 +78,15 @@ resource "azurerm_linux_web_app" "as1" {
   depends_on          = [azurerm_service_plan.asp]
 
   identity {
-  type = "SystemAssigned"
-}
+    type = "SystemAssigned"
+  }
 
   site_config {
 
     always_on = false
 
   }
-   app_settings = { "STORAGE_URI" = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp1_sa.name}/"
+  app_settings = { "STORAGE_URI" = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp1_sa.name}/"
   }
 }
 
@@ -117,8 +117,8 @@ resource "azurerm_network_security_group" "nsg" {
 }
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.prefix}-vnet"
-  location            = azurerm_resource_group.rg.location
+  name     = "${var.prefix}-vnet"
+  location = azurerm_resource_group.rg.location
   # Use the resource group location for the virtual network
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]

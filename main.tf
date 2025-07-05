@@ -85,19 +85,19 @@ resource "azurerm_linux_web_app" "as2" {
     STORAGE_URI = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp2_sa.name}/"
   }
 }
-resource "azurerm_role_assignment" "webapp1_storage_access" {
-  principal_id         = azurerm_linux_web_app.as1.identity[0].principal_id
-  role_definition_name = "Storage Blob Data Reader"
-  scope                = azurerm_storage_account.sa.id
-  depends_on           = [azurerm_linux_web_app.as1]
-}
+# resource "azurerm_role_assignment" "webapp1_storage_access" {
+#   principal_id         = azurerm_linux_web_app.as1.identity[0].principal_id
+#   role_definition_name = "Storage Blob Data Reader"
+#   scope                = azurerm_storage_account.sa.id
+#   depends_on           = [azurerm_linux_web_app.as1]
+# }
 
-resource "azurerm_role_assignment" "webapp2_storage_access" {
-  principal_id         = azurerm_linux_web_app.as2.identity[0].principal_id
-  role_definition_name = "Storage Blob Data Reader"
-  scope                = azurerm_storage_account.sa.id
-  depends_on           = [azurerm_linux_web_app.as2, azurerm_role_assignment.webapp1_storage_access]
-}
+# resource "azurerm_role_assignment" "webapp2_storage_access" {
+#   principal_id         = azurerm_linux_web_app.as2.identity[0].principal_id
+#   role_definition_name = "Storage Blob Data Reader"
+#   scope                = azurerm_storage_account.sa.id
+#   depends_on           = [azurerm_linux_web_app.as2, azurerm_role_assignment.webapp1_storage_access]
+# }
 
 resource "azurerm_network_security_group" "nsg" {
   name                = "${var.prefix}-nsg"

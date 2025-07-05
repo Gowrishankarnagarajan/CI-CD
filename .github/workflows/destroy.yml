@@ -16,9 +16,13 @@ jobs:
   terraform:
     name: Terraform Destroy
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion != 'success' && github.event.workflow_run.head_branch == 'main' }} 
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }} 
     steps:
-    
+      - name: Check if the workflow run was successful
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        run: echo "Previous workflow run was successful, proceeding with destroy."
+      - name: Sleep for 10 seconds
+        run: sleep 300
       - name: Checkout
         uses: actions/checkout@v3
 

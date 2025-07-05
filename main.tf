@@ -25,12 +25,12 @@ resource "azurerm_storage_account" "sa" {
 }
 resource "azurerm_storage_container" "webapp1-sa" {
   name                  = "${var.prefix}webapp1" # This is the name of the container for webapp1
-  storage_account_id    = azurerm_storage_account.sa.id
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob" # or "blob", "container" for public access
 }
 resource "azurerm_storage_container" "webapp2-sa" {
   name                  = "${var.prefix}webapp2"
-  storage_account_id    = azurerm_storage_account.sa.id
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob" # or "blob", "container" for public access
 }
 

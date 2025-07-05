@@ -3,15 +3,15 @@ variable "prefix" {
   default     = "myproject"
 }
 
-resource "azurerm_resource_group" "rg" {
-  name     = "${var.prefix}-rg"
-  location = "UK South"
+resource "random_id" "kv" {
+  byte_length = 4
 }
 
 data "azurerm_client_config" "current" {}
 
-resource "random_id" "kv" {
-  byte_length = 4
+resource "azurerm_resource_group" "rg" {
+  name     = "${var.prefix}-rg"
+  location = "UK South"
 }
 
 resource "azurerm_storage_account" "sa" {
@@ -28,13 +28,13 @@ resource "azurerm_storage_account" "sa" {
 
 resource "azurerm_storage_container" "webapp1_sa" {
   name                  = "${var.prefix}webapp1"
-  storage_account_id    = azurerm_storage_account.sa.id
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
 }
 
 resource "azurerm_storage_container" "webapp2_sa" {
   name                  = "${var.prefix}webapp2"
-  storage_account_id    = azurerm_storage_account.sa.id
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
 }
 
@@ -119,13 +119,13 @@ resource "azurerm_virtual_network" "vnet" {
 
   subnet {
     name             = "subnet1"
-    address_prefixes = ["10.0.1.0/24"]
+    address_prefix   = "10.0.1.0/24"
     security_group   = azurerm_network_security_group.nsg.id
   }
 
   subnet {
     name             = "subnet2"
-    address_prefixes = ["10.0.2.0/24"]
+    address_prefix   = "10.0.2.0/24"
     security_group   = azurerm_network_security_group.nsg.id
   }
 

@@ -16,28 +16,28 @@ resource "azurerm_storage_account" "sa" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "GRS"
-  tags = { environment = "Devops" }
+  tags                     = { environment = "Devops" }
 }
 
 resource "azurerm_storage_container" "webapp1_sa" {
-  name                 = "${var.prefix}webapp1"
-  storage_account_name = azurerm_storage_account.sa.name
+  name                  = "${var.prefix}webapp1"
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
 }
 
 resource "azurerm_storage_container" "webapp2_sa" {
-  name                 = "${var.prefix}webapp2"
-  storage_account_name = azurerm_storage_account.sa.name
+  name                  = "${var.prefix}webapp2"
+  storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
 }
 
 resource "azurerm_key_vault" "keyvault" {
-  name                       = "${var.prefix}-keyvault-${random_id.kv.hex}"
-  location                   = azurerm_resource_group.rg.location
-  resource_group_name        = azurerm_resource_group.rg.name
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  sku_name                   = "standard"
-  purge_protection_enabled   = true
+  name                     = "${var.prefix}-keyvault-${random_id.kv.hex}"
+  location                 = azurerm_resource_group.rg.location
+  resource_group_name      = azurerm_resource_group.rg.name
+  tenant_id                = data.azurerm_client_config.current.tenant_id
+  sku_name                 = "standard"
+  purge_protection_enabled = true
 }
 
 resource "azurerm_service_plan" "asp" {
@@ -74,9 +74,9 @@ resource "azurerm_linux_web_app" "as2" {
   site_config { always_on = false }
 
   app_settings = {
-    
+
     STORAGE_URI = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.webapp2_sa.name}/"
-}
+  }
 }
 resource "azurerm_role_assignment" "webapp1_storage_access" {
   principal_id         = azurerm_linux_web_app.as1.identity[0].principal_id

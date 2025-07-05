@@ -16,6 +16,7 @@ resource "azurerm_storage_account" "sa" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "GRS"
+  depends_on = [ azurerm_resource_group.rg ]
   tags                     = { environment = "Devops" }
 }
 
@@ -23,12 +24,14 @@ resource "azurerm_storage_container" "webapp1_sa" {
   name                  = "${var.prefix}webapp1"
   storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
+  depends_on = [ azurerm_storage_account.sa ]
 }
 
 resource "azurerm_storage_container" "webapp2_sa" {
   name                  = "${var.prefix}webapp2"
   storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "blob"
+  depends_on = [ azurerm_storage_container.webapp1_sa ]
 }
 
 resource "azurerm_key_vault" "keyvault" {
@@ -38,6 +41,7 @@ resource "azurerm_key_vault" "keyvault" {
   tenant_id                = data.azurerm_client_config.current.tenant_id
   sku_name                 = "standard"
   purge_protection_enabled = true
+  depends_on = [ azurerm_resource_group.rg ]
 }
 
 resource "azurerm_service_plan" "asp" {
@@ -46,6 +50,7 @@ resource "azurerm_service_plan" "asp" {
   resource_group_name = azurerm_resource_group.rg.name
   os_type             = "Linux"
   sku_name            = "B1"
+  depends_on = [ azurerm_resource_group.rg ]
 }
 
 resource "azurerm_linux_web_app" "as1" {
@@ -53,6 +58,7 @@ resource "azurerm_linux_web_app" "as1" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.asp.id
+  depends_on = [ azurerm_service_plan.asp ]
 
   identity { type = "SystemAssigned" }
 
@@ -68,6 +74,7 @@ resource "azurerm_linux_web_app" "as2" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.asp.id
+  depends_on = [ azurerm_linux_web_app.as1 ]
 
   identity { type = "SystemAssigned" }
 
@@ -82,18 +89,21 @@ resource "azurerm_role_assignment" "webapp1_storage_access" {
   principal_id         = azurerm_linux_web_app.as1.identity[0].principal_id
   role_definition_name = "Storage Blob Data Reader"
   scope                = azurerm_storage_account.sa.id
+  depends_on = [ azurerm_linux_web_app.as1 ]
 }
 
 resource "azurerm_role_assignment" "webapp2_storage_access" {
   principal_id         = azurerm_linux_web_app.as2.identity[0].principal_id
   role_definition_name = "Storage Blob Data Reader"
   scope                = azurerm_storage_account.sa.id
+  depends_on = [ azurerm_linux_web_app.as2, azurerm_role_assignment.webapp1_storage_access ]
 }
 
 resource "azurerm_network_security_group" "nsg" {
   name                = "${var.prefix}-nsg"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  depends_on = [ azurerm_resource_group.rg ]
 
   security_rule {
     name                       = "AllowHTTP"
@@ -113,6 +123,7 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   address_space       = ["10.0.0.0/16"]
+  depends_on = [ azurerm_network_security_group.nsg ]
 }
 
 resource "azurerm_subnet" "subnet1" {
@@ -120,6 +131,7 @@ resource "azurerm_subnet" "subnet1" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
+  depends_on = [ azurerm_subnet_network_security_group_association.subnet2_assoc ]
 }
 
 resource "azurerm_subnet" "subnet2" {
@@ -127,14 +139,17 @@ resource "azurerm_subnet" "subnet2" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
+  depends_on = [ azurerm_subnet_network_security_group_association.subnet1_assoc ]  
 }
 
 resource "azurerm_subnet_network_security_group_association" "subnet1_assoc" {
   subnet_id                 = azurerm_subnet.subnet1.id
   network_security_group_id = azurerm_network_security_group.nsg.id
+  depends_on = [ azurerm_network_security_group.nsg ]
 }
 
 resource "azurerm_subnet_network_security_group_association" "subnet2_assoc" {
   subnet_id                 = azurerm_subnet.subnet2.id
   network_security_group_id = azurerm_network_security_group.nsg.id
+  depends_on = [ azurerm_network_security_group.nsg ]
 }

@@ -30,6 +30,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: terraform-state
+          path: ./terraform-state
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2

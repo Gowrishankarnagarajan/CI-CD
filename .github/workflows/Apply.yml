@@ -50,11 +50,15 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve tfplan.out
 
-      - name: Upload Terraform state
+      - name: Upload Terraform state safely
         run: |
           mkdir -p terraform-artifacts
           cp terraform.tfstate terraform-artifacts/
-          cp terraform.tfstate.backup terraform-artifacts/
+          if [ -f terraform.tfstate.backup ]; then
+            cp terraform.tfstate.backup terraform-artifacts/
+          else
+            echo "No backup file found. Skipping."
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

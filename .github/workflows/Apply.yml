@@ -44,19 +44,20 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -out=plan.out
-
-      - name: Terraform Show Plan Output
-        run: terraform show -no-color plan.out
+        run: terraform plan -out=tfplan.out
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve plan.out
+        run: terraform apply -auto-approve tfplan.out
 
       - name: Upload Terraform state
+        run: |
+          mkdir -p terraform-artifacts
+          cp terraform.tfstate terraform-artifacts/
+          cp terraform.tfstate.backup terraform-artifacts/
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: terraform-state
-          path: |
-            terraform.tfstate
-            terraform.tfstate.backup
+          path: terraform-artifacts/

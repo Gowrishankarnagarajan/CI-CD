@@ -13,9 +13,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Wait 5 minutes before destroy
-        run: sleep 300  # 300 seconds = 5 minutes
-
+      - name: Wait 10 minutes before destroy
+        run: sleep 200  # 600 seconds = 10 mins
 
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -24,10 +23,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: terraform-state
-          path: .
-
-      - name: List downloaded files
-        run: ls -la
+          path: terraform-artifacts/
 
       - name: Authenticate with Azure OIDC
         uses: azure/login@v1
@@ -41,7 +37,7 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        
 
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
+        working-directory: terraform-artifacts
